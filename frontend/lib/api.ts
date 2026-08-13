@@ -100,3 +100,15 @@ export async function joinMeeting(
   return res.json();
 }
 
+export async function getMeetingParticipants(meetingId: string): Promise<Participant[]> {
+  const res = await fetch(`${API_URL}/meetings/${meetingId}/participants`);
+  if (!res.ok) throw new Error("Failed to fetch meeting participants");
+  return res.json();
+}
+
+export async function leaveMeeting(meetingId: string, participantId: number): Promise<void> {
+  const res = await fetch(`${API_URL}/meetings/${meetingId}/participants/${participantId}/leave`, {
+    method: "POST",
+  });
+  if (!res.ok) throw new Error("Failed to leave meeting");
+}
