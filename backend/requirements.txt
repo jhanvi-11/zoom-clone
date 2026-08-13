@@ -1,0 +1,6 @@
+fastapi
+SQLAlchemy
+pydantic
+uvicorn
+python-multipart
+websockets
