@@ -84,13 +84,19 @@ export default function Dashboard() {
           </button>
 
           {/* Join Meeting Button */}
-          <button className="flex flex-col justify-center items-center gap-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl p-8 shadow-md hover:shadow-lg transition-all h-48 group">
+          <button 
+            onClick={() => router.push("/join")}
+            className="flex flex-col justify-center items-center gap-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl p-8 shadow-md hover:shadow-lg transition-all h-48 group"
+          >
             <PlusSquare className="w-12 h-12 group-hover:scale-110 transition-transform" />
             <span className="text-xl font-semibold">Join Meeting</span>
           </button>
 
           {/* Schedule Meeting Button */}
-          <button className="flex flex-col justify-center items-center gap-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl p-8 shadow-md hover:shadow-lg transition-all h-48 group">
+          <button 
+            onClick={() => router.push("/schedule")}
+            className="flex flex-col justify-center items-center gap-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl p-8 shadow-md hover:shadow-lg transition-all h-48 group"
+          >
             <Calendar className="w-12 h-12 group-hover:scale-110 transition-transform" />
             <span className="text-xl font-semibold">Schedule Meeting</span>
           </button>

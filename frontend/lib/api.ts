@@ -51,3 +51,52 @@ export async function getRecentMeetings(): Promise<Meeting[]> {
   if (!res.ok) throw new Error("Failed to fetch recent meetings");
   return res.json();
 }
+
+export async function createScheduledMeeting(
+  hostId: number,
+  title: string,
+  description: string,
+  scheduledAt: string,
+  durationMinutes: number
+): Promise<Meeting> {
+  const res = await fetch(`${API_URL}/meetings/schedule`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      host_id: hostId,
+      title,
+      description,
+      scheduled_at: scheduledAt,
+      duration_minutes: durationMinutes,
+    }),
+  });
+  if (!res.ok) throw new Error("Failed to schedule meeting");
+  return res.json();
+}
+
+export async function getMeeting(meetingId: string): Promise<Meeting> {
+  const res = await fetch(`${API_URL}/meetings/${meetingId}`);
+  if (!res.ok) {
+    if (res.status === 404) throw new Error("Meeting not found");
+    throw new Error("Failed to fetch meeting");
+  }
+  return res.json();
+}
+
+export async function joinMeeting(
+  meetingId: string,
+  displayName: string,
+  userId?: number
+): Promise<Participant> {
+  const res = await fetch(`${API_URL}/meetings/${meetingId}/participants`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      display_name: displayName,
+      user_id: userId || null,
+    }),
+  });
+  if (!res.ok) throw new Error("Failed to join meeting");
+  return res.json();
+}
+
