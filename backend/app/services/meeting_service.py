@@ -97,6 +97,15 @@ def get_meeting_participants(db: Session, meeting_pk: int):
 
 
 def join_meeting(db: Session, db_meeting: Meeting, participant_in: ParticipantBase):
+    if participant_in.user_id:
+        existing_p = db.query(Participant).filter(
+            Participant.meeting_id == db_meeting.id,
+            Participant.user_id == participant_in.user_id,
+            Participant.left_at.is_(None)
+        ).first()
+        if existing_p:
+            return existing_p
+
     p = Participant(
         meeting_id=db_meeting.id,
         user_id=participant_in.user_id,

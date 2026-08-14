@@ -1,30 +1,31 @@
 "use client";
 
-import React, { useEffect, useState, use } from "react";
+import React, { useEffect, useState, use, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Shield } from "lucide-react";
+import { Shield, Loader2 } from "lucide-react";
 
-import { Meeting, Participant, getMeeting, getMeetingParticipants, leaveMeeting } from "@/lib/api";
+import { Meeting, Participant, getMeeting, getMeetingParticipants, leaveMeeting, joinMeeting } from "@/lib/api";
 import { useLocalMedia } from "@/hooks/useLocalMedia";
+import { useMeetingSocket } from "@/hooks/useMeetingSocket";
 
 import VideoGrid from "@/components/meeting/VideoGrid";
 import VideoTile from "@/components/meeting/VideoTile";
 import ControlBar from "@/components/meeting/ControlBar";
 import ParticipantsPanel from "@/components/meeting/ParticipantsPanel";
 
-export default function MeetingRoom({ params }: { params: Promise<{ meetingId: string }> }) {
+// Define an inner component that receives a GUARANTEED participantId
+function MeetingRoomInner({ meetingId, participantId }: { meetingId: string, participantId: number }) {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const { meetingId } = use(params);
-  const participantIdStr = searchParams.get("participantId");
-  const participantId = participantIdStr ? parseInt(participantIdStr, 10) : undefined;
-
+  
   const [meeting, setMeeting] = useState<Meeting | null>(null);
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [showParticipants, setShowParticipants] = useState(false);
   const [currentTime, setCurrentTime] = useState("");
 
   const { stream, cameraOn, micOn, toggleMic, toggleCamera, stopAllMedia, error } = useLocalMedia();
+  
+  // Initialize WebSocket signaling
+  const { connectionStatus, lastMessage } = useMeetingSocket(meetingId, participantId);
 
   // Clock
   useEffect(() => {
@@ -36,7 +37,7 @@ export default function MeetingRoom({ params }: { params: Promise<{ meetingId: s
     return () => clearInterval(timer);
   }, []);
 
-  // Fetch Meeting & Participants
+  // Fetch Meeting & Initial Participants
   useEffect(() => {
     async function loadData() {
       try {
@@ -53,6 +54,15 @@ export default function MeetingRoom({ params }: { params: Promise<{ meetingId: s
     loadData();
   }, [meetingId, router]);
 
+  // Handle incoming WebSocket messages
+  useEffect(() => {
+    if (lastMessage && (lastMessage.type === "participant-joined" || lastMessage.type === "participant-left")) {
+      getMeetingParticipants(meetingId)
+        .then(setParticipants)
+        .catch(console.error);
+    }
+  }, [lastMessage, meetingId]);
+
   // Refetch participants when panel is opened
   useEffect(() => {
     if (showParticipants) {
@@ -63,12 +73,10 @@ export default function MeetingRoom({ params }: { params: Promise<{ meetingId: s
   }, [showParticipants, meetingId]);
 
   const handleLeave = async () => {
-    if (participantId) {
-      try {
-        await leaveMeeting(meetingId, participantId);
-      } catch (err) {
-        console.error("Failed to leave properly on backend", err);
-      }
+    try {
+      await leaveMeeting(meetingId, participantId);
+    } catch (err) {
+      console.error("Failed to leave properly on backend", err);
     }
     stopAllMedia();
     router.push("/");
@@ -112,11 +120,11 @@ export default function MeetingRoom({ params }: { params: Promise<{ meetingId: s
               error={error}
             />
             
-            {/* Remote Participants (Placeholder static tiles for UI since it's not a real WebRTC mesh yet) */}
+            {/* Remote Participants */}
             {participants.filter(p => p.id !== participantId).map((p) => (
               <VideoTile
                 key={p.id}
-                stream={null} // No remote stream yet
+                stream={null}
                 displayName={p.display_name}
                 isMuted={!p.mic_on}
                 isCameraOff={!p.camera_on}
@@ -145,4 +153,54 @@ export default function MeetingRoom({ params }: { params: Promise<{ meetingId: s
       />
     </div>
   );
+}
+
+export default function MeetingRoom({ params }: { params: Promise<{ meetingId: string }> }) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { meetingId } = use(params);
+  
+  const [resolvedParticipantId, setResolvedParticipantId] = useState<number | null>(null);
+  const hasJoinedRef = useRef(false);
+
+  useEffect(() => {
+    async function resolveParticipant() {
+      if (hasJoinedRef.current) return;
+      
+      const participantIdStr = searchParams.get("participantId");
+      if (participantIdStr) {
+        hasJoinedRef.current = true;
+        setResolvedParticipantId(parseInt(participantIdStr, 10));
+        return;
+      }
+
+      hasJoinedRef.current = true;
+      // If missing, auto-join as Host (DEFAULT_USER_ID = 1)
+      try {
+        const DEFAULT_USER_ID = 1;
+        const participant = await joinMeeting(meetingId, "Host", DEFAULT_USER_ID);
+        setResolvedParticipantId(participant.id);
+        
+        // Update URL to avoid re-joining on refresh
+        const newUrl = `/meeting/${meetingId}?participantId=${participant.id}`;
+        window.history.replaceState({ ...window.history.state, as: newUrl, url: newUrl }, '', newUrl);
+      } catch (err) {
+        console.error("Failed to auto-join meeting", err);
+        alert("Failed to join meeting.");
+        router.push("/");
+      }
+    }
+
+    resolveParticipant();
+  }, [meetingId, searchParams, router]);
+
+  if (resolvedParticipantId === null) {
+    return (
+      <div className="h-screen w-screen bg-[#1a1a1a] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-white" />
+      </div>
+    );
+  }
+
+  return <MeetingRoomInner meetingId={meetingId} participantId={resolvedParticipantId} />;
 }

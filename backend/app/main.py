@@ -98,3 +98,39 @@ app.include_router(meetings.router)
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
+
+from fastapi import WebSocket, WebSocketDisconnect
+from app.websocket.manager import manager
+
+@app.websocket("/ws/meetings/{meeting_id}")
+async def websocket_endpoint(websocket: WebSocket, meeting_id: str, participant_id: int):
+    await manager.connect(meeting_id, websocket, participant_id)
+    try:
+        # Broadcast that the participant joined
+        await manager.broadcast(meeting_id, {
+            "type": "participant-joined",
+            "participant_id": participant_id
+        }, exclude_websocket=websocket)
+        
+        while True:
+            # Wait for any message from the client
+            data = await websocket.receive_json()
+            # Broadcast the received message to everyone else in the room
+            await manager.broadcast(meeting_id, data, exclude_websocket=websocket)
+            
+    except WebSocketDisconnect:
+        manager.disconnect(meeting_id, websocket)
+        
+        from app.database import SessionLocal
+        from app.services.meeting_service import leave_meeting
+        db = SessionLocal()
+        try:
+            leave_meeting(db, participant_id)
+        finally:
+            db.close()
+            
+        # Broadcast that the participant left
+        await manager.broadcast(meeting_id, {
+            "type": "participant-left",
+            "participant_id": participant_id
+        })
