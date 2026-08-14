@@ -162,6 +162,6 @@ These are deliberate architectural and scoping choices made for the assignment c
 - Backend free-tier hosting may cold-start on the first request after periods of inactivity.
 
 ## 9. Live Links
-- **Deployed frontend:** [URL]
-- **Deployed backend:** [URL]
-- **GitHub repo:** [URL]
+- **Deployed frontend:** https://zoom-clone-murex-ten.vercel.app/
+- **Deployed backend:** https://zoom-clone-xqv2.onrender.com/health
+- **GitHub repo:** https://github.com/jhanvi-11/zoom-clone
