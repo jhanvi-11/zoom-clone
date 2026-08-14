@@ -125,3 +125,14 @@ def leave_meeting(db: Session, participant_id: int):
         db.commit()
         db.refresh(p)
     return p
+
+def update_participant_media_state(db: Session, participant_id: int, mic_on: bool | None = None, camera_on: bool | None = None):
+    p = db.query(Participant).filter(Participant.id == participant_id).first()
+    if p:
+        if mic_on is not None:
+            p.mic_on = mic_on
+        if camera_on is not None:
+            p.camera_on = camera_on
+        db.commit()
+        db.refresh(p)
+    return p

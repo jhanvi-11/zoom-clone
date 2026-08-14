@@ -112,3 +112,21 @@ export async function leaveMeeting(meetingId: string, participantId: number): Pr
   });
   if (!res.ok) throw new Error("Failed to leave meeting");
 }
+
+export async function updateParticipantMedia(
+  meetingId: string,
+  participantId: number,
+  micOn?: boolean,
+  cameraOn?: boolean
+): Promise<Participant> {
+  const res = await fetch(`${API_URL}/meetings/${meetingId}/participants/${participantId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      mic_on: micOn,
+      camera_on: cameraOn,
+    }),
+  });
+  if (!res.ok) throw new Error("Failed to update media state");
+  return res.json();
+}

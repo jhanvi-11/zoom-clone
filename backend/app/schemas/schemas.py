@@ -54,3 +54,7 @@ class ParticipantResponse(ParticipantBase):
     left_at: Optional[datetime] = None
     class Config:
         from_attributes = True
+
+class ParticipantUpdateMedia(BaseModel):
+    mic_on: Optional[bool] = None
+    camera_on: Optional[bool] = None

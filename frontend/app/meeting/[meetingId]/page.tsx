@@ -4,9 +4,10 @@ import React, { useEffect, useState, use, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Shield, Loader2 } from "lucide-react";
 
-import { Meeting, Participant, getMeeting, getMeetingParticipants, leaveMeeting, joinMeeting } from "@/lib/api";
+import { Meeting, Participant, getMeeting, getMeetingParticipants, leaveMeeting, joinMeeting, updateParticipantMedia } from "@/lib/api";
 import { useLocalMedia } from "@/hooks/useLocalMedia";
 import { useMeetingSocket } from "@/hooks/useMeetingSocket";
+import { useWebRTC } from "@/hooks/useWebRTC";
 
 import VideoGrid from "@/components/meeting/VideoGrid";
 import VideoTile from "@/components/meeting/VideoTile";
@@ -25,7 +26,10 @@ function MeetingRoomInner({ meetingId, participantId }: { meetingId: string, par
   const { stream, cameraOn, micOn, toggleMic, toggleCamera, stopAllMedia, error } = useLocalMedia();
   
   // Initialize WebSocket signaling
-  const { connectionStatus, lastMessage } = useMeetingSocket(meetingId, participantId);
+  const { connectionStatus, lastMessage, sendMessage } = useMeetingSocket(meetingId, participantId);
+  
+  // Initialize WebRTC
+  const { remoteStreams, cleanup } = useWebRTC(stream, meetingId, participantId, sendMessage, lastMessage);
 
   // Clock
   useEffect(() => {
@@ -56,10 +60,23 @@ function MeetingRoomInner({ meetingId, participantId }: { meetingId: string, par
 
   // Handle incoming WebSocket messages
   useEffect(() => {
-    if (lastMessage && (lastMessage.type === "participant-joined" || lastMessage.type === "participant-left")) {
+    if (!lastMessage) return;
+    
+    if (lastMessage.type === "participant-joined" || lastMessage.type === "participant-left") {
       getMeetingParticipants(meetingId)
         .then(setParticipants)
         .catch(console.error);
+    } else if (lastMessage.type === "media-state-changed") {
+      setParticipants(prev => prev.map(p => {
+        if (p.id === lastMessage.participant_id) {
+          return {
+            ...p,
+            mic_on: lastMessage.mic_on !== undefined ? lastMessage.mic_on : p.mic_on,
+            camera_on: lastMessage.camera_on !== undefined ? lastMessage.camera_on : p.camera_on
+          };
+        }
+        return p;
+      }));
     }
   }, [lastMessage, meetingId]);
 
@@ -78,8 +95,39 @@ function MeetingRoomInner({ meetingId, participantId }: { meetingId: string, par
     } catch (err) {
       console.error("Failed to leave properly on backend", err);
     }
+    cleanup();
     stopAllMedia();
     router.push("/");
+  };
+
+  const handleToggleMic = async () => {
+    const newMicOn = !micOn;
+    toggleMic();
+    try {
+      await updateParticipantMedia(meetingId, participantId, newMicOn, undefined);
+      sendMessage({
+        type: "media-state-changed",
+        participant_id: participantId,
+        mic_on: newMicOn,
+      });
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleToggleCamera = async () => {
+    const newCameraOn = !cameraOn;
+    toggleCamera();
+    try {
+      await updateParticipantMedia(meetingId, participantId, undefined, newCameraOn);
+      sendMessage({
+        type: "media-state-changed",
+        participant_id: participantId,
+        camera_on: newCameraOn,
+      });
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   // Find local participant info if exists
@@ -124,7 +172,7 @@ function MeetingRoomInner({ meetingId, participantId }: { meetingId: string, par
             {participants.filter(p => p.id !== participantId).map((p) => (
               <VideoTile
                 key={p.id}
-                stream={null}
+                stream={remoteStreams[p.id] || null}
                 displayName={p.display_name}
                 isMuted={!p.mic_on}
                 isCameraOff={!p.camera_on}
@@ -146,8 +194,8 @@ function MeetingRoomInner({ meetingId, participantId }: { meetingId: string, par
       <ControlBar
         micOn={micOn}
         cameraOn={cameraOn}
-        onToggleMic={toggleMic}
-        onToggleCamera={toggleCamera}
+        onToggleMic={handleToggleMic}
+        onToggleCamera={handleToggleCamera}
         onToggleParticipants={() => setShowParticipants(!showParticipants)}
         onLeave={handleLeave}
       />

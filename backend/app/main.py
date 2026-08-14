@@ -119,18 +119,5 @@ async def websocket_endpoint(websocket: WebSocket, meeting_id: str, participant_
             await manager.broadcast(meeting_id, data, exclude_websocket=websocket)
             
     except WebSocketDisconnect:
-        manager.disconnect(meeting_id, websocket)
-        
-        from app.database import SessionLocal
-        from app.services.meeting_service import leave_meeting
-        db = SessionLocal()
-        try:
-            leave_meeting(db, participant_id)
-        finally:
-            db.close()
-            
-        # Broadcast that the participant left
-        await manager.broadcast(meeting_id, {
-            "type": "participant-left",
-            "participant_id": participant_id
-        })
+        manager.disconnect(meeting_id, websocket, participant_id)
+

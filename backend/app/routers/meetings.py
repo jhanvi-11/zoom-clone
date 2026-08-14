@@ -5,7 +5,7 @@ from typing import List
 from app.database import SessionLocal
 from app.schemas.schemas import (
     MeetingCreateInstant, MeetingCreateScheduled, MeetingResponse,
-    ParticipantBase, ParticipantResponse
+    ParticipantBase, ParticipantResponse, ParticipantUpdateMedia
 )
 from app.services import meeting_service
 
@@ -59,6 +59,13 @@ def join_meeting(meeting_id: str, participant: ParticipantBase, db: Session = De
 @router.post("/{meeting_id}/participants/{participant_id}/leave", response_model=ParticipantResponse)
 def leave_meeting(meeting_id: str, participant_id: int, db: Session = Depends(get_db)):
     p = meeting_service.leave_meeting(db, participant_id)
+    if not p:
+        raise HTTPException(status_code=404, detail="Participant not found")
+    return p
+
+@router.patch("/{meeting_id}/participants/{participant_id}", response_model=ParticipantResponse)
+def update_participant_media(meeting_id: str, participant_id: int, update_data: ParticipantUpdateMedia, db: Session = Depends(get_db)):
+    p = meeting_service.update_participant_media_state(db, participant_id, update_data.mic_on, update_data.camera_on)
     if not p:
         raise HTTPException(status_code=404, detail="Participant not found")
     return p

@@ -119,7 +119,7 @@ export default function JoinPage() {
                   required
                   value={meetingInput}
                   onChange={(e) => setMeetingInput(e.target.value)}
-                  className="w-full px-4 py-3 text-lg border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-center"
+                  className="w-full px-4 py-3 text-lg border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-center text-gray-900 placeholder:text-gray-400"
                   placeholder="Meeting ID or Personal Link Name"
                 />
               </div>
@@ -152,7 +152,7 @@ export default function JoinPage() {
                   required
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
-                  className="w-full px-4 py-3 text-lg border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-center"
+                  className="w-full px-4 py-3 text-lg border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-center text-gray-900 placeholder:text-gray-400"
                   placeholder="Your Name"
                 />
               </div>
