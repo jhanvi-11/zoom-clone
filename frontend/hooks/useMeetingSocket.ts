@@ -10,8 +10,12 @@ export function useMeetingSocket(meetingId: string, participantId?: number) {
   useEffect(() => {
     if (!meetingId || !participantId) return;
 
-    // Build the WebSocket URL (ws:// instead of http://)
-    const apiUrl = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000";
+    // Build the WebSocket URL (wss:// for https, ws:// for http)
+    let apiUrl = process.env.NEXT_PUBLIC_WS_URL;
+    if (!apiUrl) {
+      const httpUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      apiUrl = httpUrl.replace("http://", "ws://").replace("https://", "wss://");
+    }
     const wsUrl = `${apiUrl}/ws/meetings/${meetingId}?participant_id=${participantId}`;
     
     setConnectionStatus("connecting");

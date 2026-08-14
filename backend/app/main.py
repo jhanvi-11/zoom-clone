@@ -80,10 +80,10 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Zoom Clone API", lifespan=lifespan)
 
-origins = [
-    "http://localhost:3000",
-    "https://your-production-vercel-url.vercel.app",  # Placeholder production Vercel URL
-]
+import os
+
+origins_env = os.environ.get("ALLOWED_ORIGINS", "http://localhost:3000")
+origins = [origin.strip() for origin in origins_env.split(",") if origin.strip()]
 
 app.add_middleware(
     CORSMiddleware,
